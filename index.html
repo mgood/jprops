@@ -8,23 +8,21 @@
   <style type="text/css">
     body {
       margin-top: 1.0em;
-      background-color: #1894c4;
       font-family: Helvetica, Arial, FreeSans, san-serif;
-      color: #ffffff;
+      color: #404040;
     }
     #container {
       margin: 0 auto;
       width: 700px;
     }
-    h1 { font-size: 3.8em; color: #e76b3b; margin-bottom: 3px; }
+    h1 { font-size: 3.8em; margin-bottom: 3px; }
     h1 .small { font-size: 0.4em; }
     h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #e76b3b; }
-    h3 { text-align: center; color: #e76b3b; }
-    a { color: #e76b3b; }
+    h2 { font-size: 1.5em; }
+    a { color: #0069D6; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
-    pre { background: #000; color: #fff; padding: 15px;}
+    pre { background: #404040; color: #fff; padding: 15px;}
     hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
     .footer { text-align:center; padding-top:30px; font-style: italic; }
   </style>
@@ -49,11 +47,92 @@
       Java properties file parser
     </div>
 
-    <h2>Authors</h2>
-<p>Matt Good (matt@matt-good.net)<br/><br/>      </p>
-<h2>Contact</h2>
-<p>Matt Good (matt@matt-good.net)<br/>      </p>
+    <h2>Installation</h2>
 
+    <p>
+      Use <a href="#">pip</a> to install jprops from <a href="#">PyPI</a>.
+
+      <pre>pip install jprops</pre>
+    </p>
+
+    <h2>Usage</h2>
+
+    <h3>Reading properties</h3>
+
+    <p>
+      Use <code>jprops.load_properties</code> to read the a properties file and return a normal Python <code>dict</code>.
+
+      <pre>import jprops
+with open('mine.properties') as fp:
+  properties = jprops.load_properties(fp)</pre>
+
+      You can provide a custom "mapping" to load the properties into a
+      different data strucuture.  For example, if you would like to keep the
+      properties in the same order they originally appeared, you can use an
+      "ordered dict", such as
+      <a href="http://docs.python.org/library/collections.html#collections.OrderedDict">collections.OrderedDict</a>
+      from Python 2.7, or
+      <a href="http://packages.python.org/Brownie/api/datastructures.html#brownie.datastructures.OrderedDict">brownie.OrderedDict</a>.
+
+      <pre>import collections
+with open('mine.properties') as fp:
+  properties = jprops.load_properties(fp, collections.OrderedDict)</pre>
+
+      <code>load_properties</code> is just a wrapper to <code>iter_properties</code>, which you can use directly if you want to process the properties lazily without loading them all into a data structure.
+
+      <pre>with open('mine.properties') as fp:
+  for key, value in jprops.iter_properties(fp):
+    if key.startswith('foo'):
+      print key, value</pre>
+    </p>
+
+    <h3>Writing properties</h3>
+
+    <p>
+      Use <code>jprops.store_properties</code> to write a <code>dict</code>,
+      dict-like object, or any iterable of (key, value) pairs to a file.
+
+      <pre>x = {'y': '1', 'z': '2'}
+with open('out.properties', 'w') as fp:
+  jprops.store_properties(fp, x)</pre>
+    </p>
+
+    <p>
+      By default jprops follows the Java convention of writing a timestamp comment to the beginning of the file, like:
+      <pre>#Thu Oct 06 19:08:50 EDT 2011
+y=1
+z=2</pre>
+
+      You can suppress writing the timestamp comment by passing <code>timestamp=False</code>.
+    </p>
+
+    <p>
+      You can provide a custom header comment that appears before the timestamp.  Multi-line comments are handled appropriately, continuing the comment across lines.
+      <pre>jprops.store_properties(fp, {'x': '1'}, comment='Hello\nworld!')</pre>
+
+      <pre>#Hello
+#world!
+#Thu Oct 06 19:17:21 EDT 2011
+x=1</pre>
+    </p>
+
+    <p>
+      You can also use <code>write_comment</code> and <code>write_property</code> to have finer-grained control over writing a properties file.
+
+      <pre>with open('out.properties', 'w') as fp:
+  jprops.write_comment(fp, 'the hostname:')
+  jprops.write_property(fp, 'host', 'localhost')
+  jprops.write_comment(fp, 'the port number:')
+  jprops.write_property(fp, 'port', '443')</pre>
+
+      <pre>#the hostname:
+host=localhost
+#the port number:
+port=443</pre>
+    </p>
+
+    <h2>Authors</h2>
+    <p>Matt Good (matt@matt-good.net)</p>
 
     <h2>Download</h2>
     <p>
