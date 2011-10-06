@@ -1,0 +1,19 @@
+#!/usr/bin/python
+
+import setuptools
+
+setuptools.setup(
+  name = 'jprops',
+  version = '0.1',
+  license = 'BSD',
+  description = open('README.txt').read(),
+  author = 'Matt Good',
+  author_email = 'matt@matt-good.net',
+  url = 'http://github.com/mgood/jprops',
+  platforms = 'any',
+
+  py_modules = ['jprops'],
+
+  zip_safe = True,
+  verbose = False,
+)
