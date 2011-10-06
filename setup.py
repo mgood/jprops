@@ -9,7 +9,7 @@ setuptools.setup(
   description = open('README.txt').read(),
   author = 'Matt Good',
   author_email = 'matt@matt-good.net',
-  url = 'http://github.com/mgood/jprops',
+  url = 'http://mgood.github.com/jprops/',
   platforms = 'any',
 
   py_modules = ['jprops'],
