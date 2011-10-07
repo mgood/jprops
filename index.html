@@ -73,12 +73,15 @@ with open('mine.properties') as fp:
       <a href="http://docs.python.org/library/collections.html#collections.OrderedDict">collections.OrderedDict</a>
       from Python 2.7, or
       <a href="http://packages.python.org/Brownie/api/datastructures.html#brownie.datastructures.OrderedDict">brownie.OrderedDict</a>.
+      The "mapping" can be any type or function that accepts an iterable of (key, value) pairs.
 
       <pre>import collections
 with open('mine.properties') as fp:
   properties = jprops.load_properties(fp, collections.OrderedDict)</pre>
 
-      <code>load_properties</code> is just a wrapper to <code>iter_properties</code>, which you can use directly if you want to process the properties lazily without loading them all into a data structure.
+      <code>load_properties</code> is just a wrapper to <code>iter_properties</code>,
+      which you can use directly if you want to process the properties lazily
+      without loading them all into a data structure.
 
       <pre>with open('mine.properties') as fp:
   for key, value in jprops.iter_properties(fp):
