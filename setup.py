@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
   name = 'jprops',
-  version = '0.1',
+  version = '0.2',
   license = 'BSD',
   description = open('README.txt').read(),
   author = 'Matt Good',
