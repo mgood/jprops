@@ -10,6 +10,16 @@ def test_property_lines():
   eq_(['a', 'b', 'c'], list(jprops._property_lines(fp)))
 
 
+def test_property_lines_windows():
+  fp = StringIO('a\r\nb\r\nc\r\n')
+  eq_(['a', 'b', 'c'], list(jprops._property_lines(fp)))
+
+
+def test_property_lines_mac():
+  fp = StringIO('a\rb\rc\r')
+  eq_(['a', 'b', 'c'], list(jprops._property_lines(fp)))
+
+
 def test_property_lines_skips_blanks():
   fp = StringIO('a\nb\n \t \n\nc\n')
   eq_(['a', 'b', 'c'], list(jprops._property_lines(fp)))
