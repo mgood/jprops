@@ -60,6 +60,11 @@ def write_property(fh, key, value):
     :param key: the key to write
     :param value: the value to write
   """
+  if not isinstance(key, basestring):
+    raise TypeError('keys must be str or unicode, but got: %s %r' % (type(key), key))
+  if not isinstance(value, basestring):
+    raise TypeError('values must be str or unicode, but got: %s %r' % (type(value), value))
+
   fh.write(_escape_key(key))
   fh.write('=')
   fh.write(_escape_value(value))

@@ -1,6 +1,6 @@
 from StringIO import StringIO
 
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 
 import jprops
 
@@ -179,3 +179,8 @@ def test_escape_comment_newline_already_commented():
 def test_escape_comment_unicode():
   eq_('#\xff', jprops._escape_comment(u'\u00ff'))
   eq_(r'#\u0100', jprops._escape_comment(u'\u0100'))
+
+
+def test_write_non_string():
+  assert_raises(TypeError, jprops.write_property, StringIO(), 'x', 1)
+  assert_raises(TypeError, jprops.write_property, StringIO(), 1, 'x')
