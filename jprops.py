@@ -1,6 +1,18 @@
 import re
 import string
+import sys
 import time
+
+
+PY2 = sys.version_info[0] == 2
+if not PY2:
+  text_type = str
+  string_types = (str,)
+  unichr = chr
+else:
+  text_type = unicode
+  string_types = (str, unicode)
+  unichr = unichr
 
 
 def load_properties(fh, mapping=dict):
@@ -49,7 +61,16 @@ def write_comment(fh, comment):
     :param comment: comment string to write
   """
   fh.write(_escape_comment(comment))
-  fh.write('\n')
+  fh.write(b'\n')
+
+
+def _require_string(value, name):
+  if isinstance(value, string_types):
+    return
+
+  valid_types = ' or '.join(cls.__name__ for cls in string_types)
+  raise TypeError('%s must be %s, but got: %s %r'
+                  % (name, valid_types, type(value), value))
 
 
 def write_property(fh, key, value):
@@ -60,15 +81,13 @@ def write_property(fh, key, value):
     :param key: the key to write
     :param value: the value to write
   """
-  if not isinstance(key, basestring):
-    raise TypeError('keys must be str or unicode, but got: %s %r' % (type(key), key))
-  if not isinstance(value, basestring):
-    raise TypeError('values must be str or unicode, but got: %s %r' % (type(value), value))
+  _require_string(key, 'keys')
+  _require_string(value, 'values')
 
   fh.write(_escape_key(key))
-  fh.write('=')
+  fh.write(b'=')
   fh.write(_escape_value(value))
-  fh.write('\n')
+  fh.write(b'\n')
 
 
 def iter_properties(fh):
@@ -90,9 +109,13 @@ def iter_properties(fh):
 
 
 _COMMENT_CHARS = '#!'
-_LINE_PATTERN = re.compile(r'^\s*(?P<body>.*?)(?P<backslashes>\\*)$')
+_COMMENT_CHARS_BYTES = bytearray(_COMMENT_CHARS, 'ascii')
+_LINE_PATTERN = re.compile(br'^\s*(?P<body>.*?)(?P<backslashes>\\*)$')
 _KEY_TERMINATORS_EXPLICIT = '=:'
 _KEY_TERMINATORS = _KEY_TERMINATORS_EXPLICIT + string.whitespace
+
+_KEY_TERMINATORS_EXPLICIT_BYTES = bytearray(_KEY_TERMINATORS_EXPLICIT, 'ascii')
+_KEY_TERMINATORS_BYTES = bytearray(_KEY_TERMINATORS, 'ascii')
 
 
 _escapes = {
@@ -101,16 +124,22 @@ _escapes = {
   'f': '\f',
   'r': '\r',
 }
-_escapes_rev = dict((v, '\\' + k) for k,v in _escapes.iteritems())
+_escapes_rev = dict((v, '\\' + k) for k,v in _escapes.items())
 for c in '\\' + _COMMENT_CHARS + _KEY_TERMINATORS_EXPLICIT:
   _escapes_rev.setdefault(c, '\\' + c)
 
 
 def _unescape(value):
-  try:
-    value.decode('ascii')
-  except UnicodeDecodeError:
-    value = value.decode('latin-1')
+  # all values required to be latin-1 encoded bytes
+  value = value.decode('latin-1')
+
+  # if not native string (e.g. PY2) try converting it back
+  if not isinstance(value, str):
+    try:
+      value = value.encode('ascii')
+    except UnicodeEncodeError:
+      # cannot be represented in ASCII so leave it as unicode type
+      pass
 
   def unirepl(m):
     backslashes = m.group(1)
@@ -139,10 +168,10 @@ def _unescape(value):
 def _escape_comment(comment):
   comment = comment.replace('\r\n', '\n').replace('\r', '\n')
   comment = re.sub(r'\n(?![#!])', '\n#', comment)
-  if isinstance(comment, unicode):
+  if isinstance(comment, text_type):
     comment = re.sub(u'[\u0100-\uffff]', _unicode_replace, comment)
     comment = comment.encode('latin-1')
-  return '#' + comment
+  return b'#' + comment
 
 
 def _escape_key(key):
@@ -181,25 +210,28 @@ def _unicode_replace(m):
 
 def _split_key_value(line):
   escaped = False
-  key_buf = []
+  key_buf = bytearray()
+
+  line_orig = line
+  line = bytearray(line)
 
   for idx, c in enumerate(line):
-    if not escaped and c in _KEY_TERMINATORS:
-      key_terminated_fully = c in _KEY_TERMINATORS_EXPLICIT
+    if not escaped and c in _KEY_TERMINATORS_BYTES:
+      key_terminated_fully = c in _KEY_TERMINATORS_EXPLICIT_BYTES
       break
 
     key_buf.append(c)
-    escaped = c == '\\'
+    escaped = c == ord('\\')
 
   else:
     # no key terminator, key is full line & value is blank
-    return line, ''
+    return line_orig, b''
 
   value = line[idx+1:].lstrip()
-  if not key_terminated_fully and value[:1] in _KEY_TERMINATORS_EXPLICIT:
+  if not key_terminated_fully and value[:1] in _KEY_TERMINATORS_EXPLICIT_BYTES:
     value = value[1:].lstrip()
 
-  return ''.join(key_buf), value
+  return bytes(key_buf), bytes(value)
 
 
 def _universal_newlines(fp):
@@ -213,13 +245,13 @@ def _universal_newlines(fp):
       yield line
   else:
     for line in fp:
-      line = line.replace('\r\n', '\n').replace('\r', '\n')
-      for piece in line.split('\n'):
+      line = line.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+      for piece in line.split(b'\n'):
         yield piece
 
 
 def _property_lines(fp):
-  buf = []
+  buf = bytearray()
   for line in _universal_newlines(fp):
     m = _LINE_PATTERN.match(line)
 
@@ -233,11 +265,11 @@ def _property_lines(fp):
       body += backslashes[:-1]
       continuation = True
 
-    if not body or body[0] in _COMMENT_CHARS:
+    if not body or body[0] in _COMMENT_CHARS_BYTES:
       continue
 
-    buf.append(body)
+    buf.extend(body)
 
     if not continuation:
-      yield ''.join(buf)
-      buf = []
+      yield bytes(buf)
+      buf = bytearray()
