@@ -1,12 +1,25 @@
 #!/usr/bin/python
 
+import os
 import setuptools
+
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+try:
+  README = open(os.path.join(here, 'README.rst')).read()
+  CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
+except:
+  README = ''
+  CHANGES = ''
+
 
 setuptools.setup(
   name = 'jprops',
-  version = '0.2',
+  version = '1.0',
   license = 'BSD',
-  description = open('README.txt').read(),
+  description = 'Parser for Java .properties files',
+  long_description=README + '\n\n' + CHANGES,
   author = 'Matt Good',
   author_email = 'matt@matt-good.net',
   url = 'http://mgood.github.com/jprops/',
