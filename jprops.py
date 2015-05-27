@@ -15,6 +15,9 @@ else:
   unichr = unichr
 
 
+COMMENT = object()
+
+
 def load_properties(fh, mapping=dict):
   """
     Reads properties from a Java .properties file.
@@ -60,6 +63,7 @@ def write_comment(fh, comment):
     :param fh: a writable file-like object
     :param comment: comment string to write
   """
+  _require_string(comment, 'comments')
   fh.write(_escape_comment(comment))
   fh.write(b'\n')
 
@@ -81,6 +85,10 @@ def write_property(fh, key, value):
     :param key: the key to write
     :param value: the value to write
   """
+  if key is COMMENT:
+    write_comment(fh, value)
+    return
+
   _require_string(key, 'keys')
   _require_string(value, 'values')
 
@@ -90,17 +98,25 @@ def write_property(fh, key, value):
   fh.write(b'\n')
 
 
-def iter_properties(fh):
+def iter_properties(fh, comments=False):
   """
     Incrementally read properties from a Java .properties file.
 
     Yields tuples of key/value pairs.
 
+    If ``comments`` is `True`, comments will be included with ``jprops.COMMENT``
+    in place of the key.
+
     :param fh: a readable file-like object
+    :param comments: should include comments (default: False)
   """
   for line in _property_lines(fh):
     key, value = _split_key_value(line)
-    yield _unescape(key), _unescape(value)
+    if key is not COMMENT:
+      key = _unescape(key)
+    elif not comments:
+      continue
+    yield key, _unescape(value)
 
 
 ################################################################################
@@ -209,6 +225,9 @@ def _unicode_replace(m):
 
 
 def _split_key_value(line):
+  if line[0] in _COMMENT_CHARS_BYTES:
+    return COMMENT, line[1:]
+
   escaped = False
   key_buf = bytearray()
 
@@ -265,7 +284,7 @@ def _property_lines(fp):
       body += backslashes[:-1]
       continuation = True
 
-    if not body or body[0] in _COMMENT_CHARS_BYTES:
+    if not body:
       continue
 
     buf.extend(body)

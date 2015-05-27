@@ -26,9 +26,9 @@ def test_property_lines_skips_blanks():
   eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
 
 
-def test_property_lines_skips_comments():
+def test_property_lines_includes_comments():
   fp = BytesIO(b'a\nb\n#foo\n!bar\nc\n')
-  eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
+  eq_([b'a', b'b', b'#foo', b'!bar', b'c'], list(jprops._property_lines(fp)))
 
 
 def test_property_lines_continuation():
@@ -93,6 +93,10 @@ def test_split_key_value_space():
 
 def test_split_key_value_empty_value():
   eq_((b'a', b''), jprops._split_key_value(b'a'))
+
+
+def test_split_key_value_comment():
+  eq_((jprops.COMMENT, b'foo'), jprops._split_key_value(b'#foo'))
 
 
 def test_unescape_basic():
@@ -185,3 +189,20 @@ def test_escape_comment_unicode():
 def test_write_non_string():
   assert_raises(TypeError, jprops.write_property, BytesIO(), b'x', 1)
   assert_raises(TypeError, jprops.write_property, BytesIO(), 1, b'x')
+
+
+def test_iter_properties_ignores_comments_by_default():
+  fp = BytesIO(b'a\n#foo\nb\n')
+  eq_([('a', ''), ('b', '')], list(jprops.iter_properties(fp)))
+
+
+def test_iter_properties_includes_comments():
+  fp = BytesIO(b'a\n#foo\nb\n')
+  eq_([('a', ''), (jprops.COMMENT, 'foo'), ('b', '')],
+      list(jprops.iter_properties(fp, comments=True)))
+
+
+def test_write_property_with_comment():
+  fp = BytesIO()
+  jprops.write_property(fp, jprops.COMMENT, 'foo')
+  eq_(b'#foo\n', fp.getvalue())
