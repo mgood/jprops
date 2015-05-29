@@ -144,6 +144,11 @@ def test_escape_basic():
   assert jprops._escape('\r') == br'\r'
 
 
+def test_escape_comment_marker():
+  assert jprops._escape('#') == br'\#'
+  assert jprops._escape('!') == br'\!'
+
+
 def test_escape_unicode():
   assert jprops._escape('\x00') == br'\u0000'
   assert jprops._escape(u'\u0000') == br'\u0000'
@@ -158,6 +163,11 @@ def test_escape_unicode():
 
 def test_escape_value_leading_whitespace():
   assert jprops._escape_value('  x\ty ') == br'\ \ x\ty '
+
+
+def test_escape_value_key_terminator():
+  assert jprops._escape_value('=') == br'\='
+  assert jprops._escape_value(':') == br'\:'
 
 
 def test_escape_keys():

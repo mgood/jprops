@@ -196,12 +196,16 @@ def _escape_key(key):
 
 def _escape_value(value):
   tail = value.lstrip()
-  if len(tail) < len(value):
-    head = value[:-len(tail)]
-    # escape any leading whitespace, but leave other spaces intact
-    return _escape(head, string.whitespace) + _escape(tail)
-  else:
+  if len(tail) == len(value):
     return _escape(value)
+
+  if tail:
+    head = value[:-len(tail)]
+  else:
+    head = value
+
+  # escape any leading whitespace, but leave other spaces intact
+  return _escape(head, string.whitespace) + _escape(tail)
 
 
 def _escape(value, chars=''):
