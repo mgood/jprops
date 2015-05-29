@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from nose.tools import eq_, assert_raises
+from pytest import raises
 
 import jprops
 from jprops import text_type
@@ -8,201 +8,203 @@ from jprops import text_type
 
 def test_property_lines():
   fp = BytesIO(b'a\nb\nc\n')
-  eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b', b'c']
 
 
 def test_property_lines_windows():
   fp = BytesIO(b'a\r\nb\r\nc\r\n')
-  eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b', b'c']
 
 
 def test_property_lines_mac():
   fp = BytesIO(b'a\rb\rc\r')
-  eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b', b'c']
 
 
 def test_property_lines_skips_blanks():
   fp = BytesIO(b'a\nb\n \t \n\nc\n')
-  eq_([b'a', b'b', b'c'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b', b'c']
 
 
 def test_property_lines_includes_comments():
   fp = BytesIO(b'a\nb\n#foo\n!bar\nc\n')
-  eq_([b'a', b'b', b'#foo', b'!bar', b'c'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b', b'#foo', b'!bar', b'c']
 
 
 def test_property_lines_continuation():
   fp = BytesIO(b'a\nb\\\nc\nd\n')
-  eq_([b'a', b'bc', b'd'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'bc', b'd']
 
 
 def test_property_lines_continuation_includes_trailing_blanks():
   fp = BytesIO(b'a\nb \\\nc\nd\n')
-  eq_([b'a', b'b c', b'd'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b c', b'd']
 
 
 def test_property_lines_continuation_skips_leading_blanks():
   fp = BytesIO(b'a\nb\\\n c\nd\n')
-  eq_([b'a', b'bc', b'd'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'bc', b'd']
 
 
 def test_property_lines_escaped_backslash_not_continuation():
   fp = BytesIO(b'a\nb\\\\\nc\nd\n')
-  eq_([b'a', b'b\\\\', b'c', b'd'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b\\\\', b'c', b'd']
 
 
 def test_property_lines_escaped_backslash_before_continuation():
   fp = BytesIO(b'a\nb\\\\\\\nc\nd\n')
-  eq_([b'a', b'b\\\\c', b'd'], list(jprops._property_lines(fp)))
+  assert list(jprops._property_lines(fp)) == [b'a', b'b\\\\c', b'd']
 
 
 # TODO test lines with trailing spaces
 
 
 def test_split_key_value_equals():
-  eq_((b'a', b'b'), jprops._split_key_value(b'a=b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a= b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a = b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a =b'))
+  assert jprops._split_key_value(b'a=b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a= b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a = b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a =b') == (b'a', b'b')
 
 
 def test_split_key_value_colon():
-  eq_((b'a', b'b'), jprops._split_key_value(b'a:b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a: b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a : b'))
-  eq_((b'a', b'b'), jprops._split_key_value(b'a :b'))
+  assert jprops._split_key_value(b'a:b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a: b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a : b') == (b'a', b'b')
+  assert jprops._split_key_value(b'a :b') == (b'a', b'b')
 
 
 def test_key_terminator_after_terminated():
-  eq_((b'a', b': b'), jprops._split_key_value(b'a : : b'))
-  eq_((b'a', b':b'), jprops._split_key_value(b'a::b'))
-  eq_((b'a', b'= b'), jprops._split_key_value(b'a = = b'))
-  eq_((b'a', b'=b'), jprops._split_key_value(b'a==b'))
-  eq_((b'a', b': b'), jprops._split_key_value(b'a = : b'))
-  eq_((b'a', b'= b'), jprops._split_key_value(b'a : = b'))
+  assert jprops._split_key_value(b'a : : b') == (b'a', b': b')
+  assert jprops._split_key_value(b'a::b') == (b'a', b':b')
+  assert jprops._split_key_value(b'a = = b') == (b'a', b'= b')
+  assert jprops._split_key_value(b'a==b') == (b'a', b'=b')
+  assert jprops._split_key_value(b'a = : b') == (b'a', b': b')
+  assert jprops._split_key_value(b'a : = b') == (b'a', b'= b')
 
 
 def test_key_terminator_escaped():
-  eq_((br'a\=b', b'c'), jprops._split_key_value(br'a\=b = c'))
-  eq_((br'a\:b\=c', b'd'), jprops._split_key_value(br'a\:b\=c : d'))
+  assert jprops._split_key_value(br'a\=b = c') == (br'a\=b', b'c')
+  assert jprops._split_key_value(br'a\:b\=c : d') == (br'a\:b\=c', b'd')
 
 
 def test_split_key_value_space():
-  eq_((b'a', b'b'), jprops._split_key_value(b'a b'))
+  assert jprops._split_key_value(b'a b') == (b'a', b'b')
 
 
 def test_split_key_value_empty_value():
-  eq_((b'a', b''), jprops._split_key_value(b'a'))
+  assert jprops._split_key_value(b'a') == (b'a', b'')
 
 
 def test_split_key_value_comment():
-  eq_((jprops.COMMENT, b'foo'), jprops._split_key_value(b'#foo'))
+  assert jprops._split_key_value(b'#foo') == (jprops.COMMENT, b'foo')
 
 
 def test_unescape_basic():
-  eq_('\t', jprops._unescape(b'\\t'))
-  eq_('\n', jprops._unescape(b'\\n'))
-  eq_('\f', jprops._unescape(b'\\f'))
-  eq_('\r', jprops._unescape(b'\\r'))
+  assert jprops._unescape(b'\\t') == '\t'
+  assert jprops._unescape(b'\\n') == '\n'
+  assert jprops._unescape(b'\\f') == '\f'
+  assert jprops._unescape(b'\\r') == '\r'
 
 
 def test_unescape_unrecognized():
-  eq_('=', jprops._unescape(br'\='))
-  eq_(':', jprops._unescape(br'\:'))
-  eq_('b', jprops._unescape(br'\b'))
+  assert jprops._unescape(br'\=') == '='
+  assert jprops._unescape(br'\:') == ':'
+  assert jprops._unescape(br'\b') == 'b'
 
 
 def test_unescape_unicode():
-  eq_(u'\u00ff', jprops._unescape(br'\u00ff'))
+  assert jprops._unescape(br'\u00ff') == u'\u00ff'
 
 
 def test_unescape_unicode_encoded_backslassh():
-  eq_(u'\\b', jprops._unescape(br'\u005cb'))
+  assert jprops._unescape(br'\u005cb') == u'\\b'
 
 
 def test_unescape_unicode_escaped():
-  eq_(r'\u00ff', jprops._unescape(br'\\u00ff'))
-  eq_(u'\\\u00ff', jprops._unescape(br'\\\u00ff'))
-  eq_(r'\\u00ff', jprops._unescape(br'\\\\u00ff'))
+  assert jprops._unescape(br'\\u00ff') == r'\u00ff'
+  assert jprops._unescape(br'\\\u00ff') == u'\\\u00ff'
+  assert jprops._unescape(br'\\\\u00ff') == r'\\u00ff'
 
 
 def test_unescape_decodes_ascii_to_native_string():
-  eq_(str, type(jprops._unescape(b'x')))
-  eq_(str, type(jprops._unescape(b'\x7f')))
+  assert type(jprops._unescape(b'x')) == str
+  assert type(jprops._unescape(b'\x7f')) == str
 
 
 def test_unescape_decodes_latin1_to_unicode():
-  eq_(text_type, type(jprops._unescape(b'\xff')))
-  eq_(text_type, type(jprops._unescape(b'\x80')))
+  assert type(jprops._unescape(b'\xff')) == text_type
+  assert type(jprops._unescape(b'\x80')) == text_type
 
 
 def test_escape_basic():
-  eq_(b'\\\\', jprops._escape('\\'))
-  eq_(br'\t', jprops._escape('\t'))
-  eq_(br'\n', jprops._escape('\n'))
-  eq_(br'\f', jprops._escape('\f'))
-  eq_(br'\r', jprops._escape('\r'))
+  assert jprops._escape('\\') == b'\\\\'
+  assert jprops._escape('\t') == br'\t'
+  assert jprops._escape('\n') == br'\n'
+  assert jprops._escape('\f') == br'\f'
+  assert jprops._escape('\r') == br'\r'
 
 
 def test_escape_unicode():
-  eq_(br'\u0000', jprops._escape('\x00'))
-  eq_(br'\u0000', jprops._escape(u'\u0000'))
-  eq_(br'\u0019', jprops._escape('\x19'))
-  eq_(br'\u0019', jprops._escape(u'\u0019'))
-  eq_(br'\u007f', jprops._escape('\x7f'))
-  eq_(br'\u007f', jprops._escape(u'\u007f'))
-  eq_(br'\uffff', jprops._escape(u'\uffff'))
+  assert jprops._escape('\x00') == br'\u0000'
+  assert jprops._escape(u'\u0000') == br'\u0000'
+  assert jprops._escape('\x19') == br'\u0019'
+  assert jprops._escape(u'\u0019') == br'\u0019'
+  assert jprops._escape('\x7f') == br'\u007f'
+  assert jprops._escape(u'\u007f') == br'\u007f'
+  assert jprops._escape(u'\uffff') == br'\uffff'
 
-  eq_(bytes, type(jprops._escape(u'\uffff')))
+  assert type(jprops._escape(u'\uffff')) == bytes
 
 
 def test_escape_value_leading_whitespace():
-  eq_(br'\ \ x\ty ', jprops._escape_value('  x\ty '))
+  assert jprops._escape_value('  x\ty ') == br'\ \ x\ty '
 
 
 def test_escape_keys():
-  eq_(br'\=', jprops._escape_key('='))
-  eq_(br'\:', jprops._escape_key(':'))
-  eq_(br'\ x\ ', jprops._escape_key(' x '))
+  assert jprops._escape_key('=') == br'\='
+  assert jprops._escape_key(':') == br'\:'
+  assert jprops._escape_key(' x ') == br'\ x\ '
 
 
 def test_escape_comment_newline():
-  eq_(b'#foo\n#bar', jprops._escape_comment('foo\nbar'))
-  eq_(b'#foo\n#\n#bar', jprops._escape_comment('foo\n\nbar'))
-  eq_(b'#foo\n#bar', jprops._escape_comment('foo\rbar'))
-  eq_(b'#foo\n#\n#bar', jprops._escape_comment('foo\r\rbar'))
-  eq_(b'#foo\n#bar', jprops._escape_comment('foo\r\nbar'))
-  eq_(b'#foo\n#\n#bar', jprops._escape_comment('foo\r\n\r\nbar'))
-  eq_(b'#foo\n#', jprops._escape_comment('foo\n'))
+  assert jprops._escape_comment('foo\nbar') == b'#foo\n#bar'
+  assert jprops._escape_comment('foo\n\nbar') == b'#foo\n#\n#bar'
+  assert jprops._escape_comment('foo\rbar') == b'#foo\n#bar'
+  assert jprops._escape_comment('foo\r\rbar') == b'#foo\n#\n#bar'
+  assert jprops._escape_comment('foo\r\nbar') == b'#foo\n#bar'
+  assert jprops._escape_comment('foo\r\n\r\nbar') == b'#foo\n#\n#bar'
+  assert jprops._escape_comment('foo\n') == b'#foo\n#'
 
 
 def test_escape_comment_newline_already_commented():
-  eq_(b'#foo\n#bar', jprops._escape_comment('foo\n#bar'))
-  eq_(b'#foo\n!bar', jprops._escape_comment('foo\n!bar'))
+  assert jprops._escape_comment('foo\n#bar') == b'#foo\n#bar'
+  assert jprops._escape_comment('foo\n!bar') == b'#foo\n!bar'
 
 
 def test_escape_comment_unicode():
-  eq_(b'#\xff', jprops._escape_comment(u'\u00ff'))
-  eq_(br'#\u0100', jprops._escape_comment(u'\u0100'))
+  assert jprops._escape_comment(u'\u00ff') == b'#\xff'
+  assert jprops._escape_comment(u'\u0100') == br'#\u0100'
 
 
 def test_write_non_string():
-  assert_raises(TypeError, jprops.write_property, BytesIO(), b'x', 1)
-  assert_raises(TypeError, jprops.write_property, BytesIO(), 1, b'x')
+  with raises(TypeError):
+    jprops.write_property(BytesIO(), b'x', 1)
+  with raises(TypeError):
+    jprops.write_property(BytesIO(), 1, b'x')
 
 
 def test_iter_properties_ignores_comments_by_default():
   fp = BytesIO(b'a\n#foo\nb\n')
-  eq_([('a', ''), ('b', '')], list(jprops.iter_properties(fp)))
+  assert list(jprops.iter_properties(fp)) == [('a', ''), ('b', '')]
 
 
 def test_iter_properties_includes_comments():
   fp = BytesIO(b'a\n#foo\nb\n')
-  eq_([('a', ''), (jprops.COMMENT, 'foo'), ('b', '')],
-      list(jprops.iter_properties(fp, comments=True)))
+  assert (list(jprops.iter_properties(fp, comments=True)) ==
+          [('a', ''), (jprops.COMMENT, 'foo'), ('b', '')])
 
 
 def test_write_property_with_comment():
   fp = BytesIO()
   jprops.write_property(fp, jprops.COMMENT, 'foo')
-  eq_(b'#foo\n', fp.getvalue())
+  assert fp.getvalue() == b'#foo\n'
