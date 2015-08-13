@@ -134,6 +134,13 @@ host=localhost
 port=443</pre>
     </p>
 
+    <h2>Important notes for Python 3</h2>
+    <p>
+      jprops expects bytes when decoding the property file, so with Python 3 you'll need to use
+      <code>open(filename, 'rb')</code> to open the property file in binary mode
+      (or use the mode <code>'wb'</code> to open for writing)
+    </p>
+
     <h2>Authors</h2>
     <p>Matt Good (matt@matt-good.net)</p>
 
