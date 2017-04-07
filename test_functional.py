@@ -15,10 +15,14 @@ def java(request):
   return jpype.java
 
 
-def java_load(data):
+def java_load(data, encoding=None):
   java = jpype.java
   props = java.util.Properties()
-  props.load(java.io.ByteArrayInputStream(data))
+  r = java.io.ByteArrayInputStream(data)
+  if encoding is not None:
+    c = java.nio.charset.Charset.forName(encoding)
+    r = java.io.InputStreamReader(r, )
+  props.load(r)
   return dict(props)
 
 
@@ -243,3 +247,13 @@ def test_store(properties_impl, props, java):
   fp = io.BytesIO()
   writer(fp, props)
   assert java_load(fp.getvalue()) == props
+
+
+@pytest.mark.parametrize('props', store_tests)
+@pytest.mark.parametrize('encoding', ['utf-8'])
+def test_file_encoding(props, java, encoding):
+  bytes_fp = io.BytesIO()
+  text_fp = io.TextIOWrapper(bytes_fp, encoding=encoding)
+  jprops.store_properties(text_fp, props)
+  text_fp.flush()
+  assert java_load(bytes_fp.getvalue(), encoding=encoding) == props

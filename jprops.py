@@ -1,3 +1,4 @@
+import io
 import re
 import string
 import sys
@@ -39,18 +40,20 @@ def store_properties(fh, props, comment=None, timestamp=True):
     :param comment: comment to write to the beginning of the file
     :param timestamp: boolean indicating whether to write a timestamp comment
   """
+  w = _property_writer(fh)
+
   if comment is not None:
-    write_comment(fh, comment)
+    w.write_comment(comment)
 
   if timestamp:
-    write_comment(fh, time.strftime('%a %b %d %H:%M:%S %Z %Y'))
+    w.write_comment(time.strftime('%a %b %d %H:%M:%S %Z %Y'))
 
   if hasattr(props, 'keys'):
     for key in props:
-      write_property(fh, key, props[key])
+      w.write_property(key, props[key])
   else:
     for key, value in props:
-      write_property(fh, key, value)
+      w.write_property(key, value)
 
 
 def write_comment(fh, comment):
@@ -63,18 +66,7 @@ def write_comment(fh, comment):
     :param fh: a writable file-like object
     :param comment: comment string to write
   """
-  _require_string(comment, 'comments')
-  fh.write(_escape_comment(comment))
-  fh.write(b'\n')
-
-
-def _require_string(value, name):
-  if isinstance(value, string_types):
-    return
-
-  valid_types = ' or '.join(cls.__name__ for cls in string_types)
-  raise TypeError('%s must be %s, but got: %s %r'
-                  % (name, valid_types, type(value), value))
+  _property_writer(fh).write_comment(comment)
 
 
 def write_property(fh, key, value):
@@ -85,17 +77,7 @@ def write_property(fh, key, value):
     :param key: the key to write
     :param value: the value to write
   """
-  if key is COMMENT:
-    write_comment(fh, value)
-    return
-
-  _require_string(key, 'keys')
-  _require_string(value, 'values')
-
-  fh.write(_escape_key(key))
-  fh.write(b'=')
-  fh.write(_escape_value(value))
-  fh.write(b'\n')
+  _property_writer(fh).write_property(key, value)
 
 
 def iter_properties(fh, comments=False):
@@ -124,14 +106,12 @@ def iter_properties(fh, comments=False):
 ################################################################################
 
 
-_COMMENT_CHARS = '#!'
-_COMMENT_CHARS_BYTES = bytearray(_COMMENT_CHARS, 'ascii')
-_LINE_PATTERN = re.compile(br'^\s*(?P<body>.*?)(?P<backslashes>\\*)$')
-_KEY_TERMINATORS_EXPLICIT = '=:'
+_COMMENT_CHARS = u'#!'
+_LINE_PATTERN = re.compile(r'^\s*(?P<body>.*?)(?P<backslashes>\\*)$')
+_KEY_TERMINATORS_EXPLICIT = u'=:'
 _KEY_TERMINATORS = _KEY_TERMINATORS_EXPLICIT + string.whitespace
-
-_KEY_TERMINATORS_EXPLICIT_BYTES = bytearray(_KEY_TERMINATORS_EXPLICIT, 'ascii')
-_KEY_TERMINATORS_BYTES = bytearray(_KEY_TERMINATORS, 'ascii')
+_COMMENT_UNICODE_ESCAPE = re.compile(u'[\u0100-\uffff]')
+_PROPERTY_UNICODE_ESCAPE = re.compile(u'[\u0000-\u0019\u007f-\uffff]')
 
 
 _escapes = {
@@ -146,17 +126,6 @@ for c in '\\' + _COMMENT_CHARS + _KEY_TERMINATORS_EXPLICIT:
 
 
 def _unescape(value):
-  # all values required to be latin-1 encoded bytes
-  value = value.decode('latin-1')
-
-  # if not native string (e.g. PY2) try converting it back
-  if not isinstance(value, str):
-    try:
-      value = value.encode('ascii')
-    except UnicodeEncodeError:
-      # cannot be represented in ASCII so leave it as unicode type
-      pass
-
   def unirepl(m):
     backslashes = m.group(1)
     charcode = m.group(2)
@@ -178,16 +147,23 @@ def _unescape(value):
     code = m.group(1)
     return _escapes.get(code, code)
 
-  return re.sub(r'\\(.)', bslashrepl, value)
+  value = re.sub(r'\\(.)', bslashrepl, value)
+
+  # if not native string (e.g. PY2) try converting it back
+  if not isinstance(value, str):
+    try:
+      value = value.encode('ascii')
+    except UnicodeEncodeError:
+      # cannot be represented in ASCII so leave it as unicode type
+      pass
+
+  return value
 
 
 def _escape_comment(comment):
   comment = comment.replace('\r\n', '\n').replace('\r', '\n')
   comment = re.sub(r'\n(?![#!])', '\n#', comment)
-  if isinstance(comment, text_type):
-    comment = re.sub(u'[\u0100-\uffff]', _unicode_replace, comment)
-    comment = comment.encode('latin-1')
-  return b'#' + comment
+  return u'#' + comment
 
 
 def _escape_key(key):
@@ -218,9 +194,7 @@ def _escape(value, chars=''):
     return _escapes_rev.get(c) or '\\' + c
   value = re.sub(escape_pattern, esc, value)
 
-  value = re.sub(u'[\u0000-\u0019\u007f-\uffff]', _unicode_replace, value)
-
-  return value.encode('latin-1')
+  return value
 
 
 def _unicode_replace(m):
@@ -229,53 +203,60 @@ def _unicode_replace(m):
 
 
 def _split_key_value(line):
-  if line[0] in _COMMENT_CHARS_BYTES:
+  if line[0] in _COMMENT_CHARS:
     return COMMENT, line[1:]
 
   escaped = False
-  key_buf = bytearray()
-
-  line_orig = line
-  line = bytearray(line)
+  key_buf = io.StringIO()
 
   for idx, c in enumerate(line):
-    if not escaped and c in _KEY_TERMINATORS_BYTES:
-      key_terminated_fully = c in _KEY_TERMINATORS_EXPLICIT_BYTES
+    if not escaped and c in _KEY_TERMINATORS:
+      key_terminated_fully = c in _KEY_TERMINATORS_EXPLICIT
       break
 
-    key_buf.append(c)
-    escaped = c == ord('\\')
+    key_buf.write(c)
+    escaped = c == u'\\'
 
   else:
     # no key terminator, key is full line & value is blank
-    return line_orig, b''
+    return line, u''
 
   value = line[idx+1:].lstrip()
-  if not key_terminated_fully and value[:1] in _KEY_TERMINATORS_EXPLICIT_BYTES:
+  if not key_terminated_fully and value[:1] in _KEY_TERMINATORS_EXPLICIT:
     value = value[1:].lstrip()
 
-  return bytes(key_buf), bytes(value)
+  return key_buf.getvalue(), value
 
 
-def _universal_newlines(fp):
-  """
-    Wrap a file to convert newlines regardless of whether the file was opened
-    with the "universal newlines" option or not.
-  """
-  # if file was opened with universal newline support we don't need to convert
-  if 'U' in getattr(fp, 'mode', ''):
-    for line in fp:
-      yield line
-  else:
-    for line in fp:
-      line = line.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-      for piece in line.split(b'\n'):
-        yield piece
+def _is_text_file(fp):
+  return (
+    isinstance(fp, io.TextIOBase)
+    or getattr(fp, 'encoding', None) is not None
+  )
+
+
+def _read_lines(fp):
+  lines = iter(fp)
+  if not _is_text_file(fp):
+    lines = (line.decode('latin-1') for line in lines)
+
+  # if file was not opened with universal newline support convert the newlines
+  if 'U' not in getattr(fp, 'mode', ''):
+    lines = _universal_newlines(lines)
+
+  return lines
+
+
+def _universal_newlines(lines):
+  for line in lines:
+    line = line.replace('\r\n', '\n').replace('\r', '\n')
+    for piece in line.split('\n'):
+      yield piece
 
 
 def _property_lines(fp):
-  buf = bytearray()
-  for line in _universal_newlines(fp):
+  buf = io.StringIO()
+  for line in _read_lines(fp):
     m = _LINE_PATTERN.match(line)
 
     body = m.group('body')
@@ -291,8 +272,79 @@ def _property_lines(fp):
     if not body:
       continue
 
-    buf.extend(body)
+    buf.write(body)
 
     if not continuation:
-      yield bytes(buf)
-      buf = bytearray()
+      yield buf.getvalue()
+      buf = io.StringIO()
+
+
+def _property_writer(fh):
+  if _is_text_file(fh):
+    return _TextPropertyWriter(fh)
+  else:
+    return _BytesPropertyWriter(fh)
+
+
+def _require_string(value, name):
+  if isinstance(value, text_type):
+    return value
+
+  if isinstance(value, string_types):
+    # allow Python 2 native strings
+    return value.decode('latin-1')
+
+  valid_types = ' or '.join(cls.__name__ for cls in string_types)
+  raise TypeError('%s must be %s, but got: %s %r'
+                  % (name, valid_types, type(value), value))
+
+
+class _TextPropertyWriter(object):
+  _escape_comment = staticmethod(_escape_comment)
+  _escape_key = staticmethod(_escape_key)
+  _escape_value = staticmethod(_escape_value)
+
+  def __init__(self, fp):
+    self.fp = fp
+
+  def write_property(self, key, value):
+    if key is COMMENT:
+      self.write_comment(value)
+      return
+
+    key = _require_string(key, 'keys')
+    value = _require_string(value, 'values')
+
+    key = self._escape_key(key)
+    value = self._escape_key(value)
+
+    self._write(key)
+    self._write(u'=')
+    self._write(value)
+    self._write(u'\n')
+
+  def write_comment(self, comment):
+    comment = _require_string(comment, 'comments')
+    comment = self._escape_comment(comment)
+    self._write(comment)
+    self._write(u'\n')
+
+  def _write(self, data):
+    self.fp.write(data)
+
+
+class _BytesPropertyWriter(_TextPropertyWriter):
+  def _write(self, data):
+    self.fp.write(data.encode('latin-1'))
+
+  def _escape_comment(self, comment):
+    comment = _TextPropertyWriter._escape_comment(comment)
+    return _COMMENT_UNICODE_ESCAPE.sub(_unicode_replace, comment)
+
+  def _escape_key(self, key):
+    key = _TextPropertyWriter._escape_key(key)
+    return _PROPERTY_UNICODE_ESCAPE.sub(_unicode_replace, key)
+
+  def _escape_value(self, value):
+    value = _TextPropertyWriter._escape_value(value)
+    return _PROPERTY_UNICODE_ESCAPE.sub(_unicode_replace, value)
