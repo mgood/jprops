@@ -16,13 +16,13 @@ except:
 
 setuptools.setup(
   name = 'jprops',
-  version = '1.0',
+  version = '2.0',
   license = 'BSD',
   description = 'Parser for Java .properties files',
   long_description=README + '\n\n' + CHANGES,
   author = 'Matt Good',
   author_email = 'matt@matt-good.net',
-  url = 'http://mgood.github.com/jprops/',
+  url = 'http://github.com/mgood/jprops/',
   platforms = 'any',
 
   py_modules = ['jprops'],

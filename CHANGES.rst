@@ -1,6 +1,11 @@
 Changes
 =======
 
+2.0 (2017-04-08)
+----------------
+
+* Support files opened with text encodings
+
 1.0 (2013-06-12)
 ----------------
 
