@@ -93,6 +93,39 @@ control over writing a properties file::
   #the port number:
   port=443
 
+Comments
+--------
+
+By default, comments in the input will be ignored, but they can be included by
+``iter_properties`` by passing ``comments=True``. The comments will be included
+with ``jprops.COMMENT`` as a sentinal value in place of the key::
+
+  with open('in.properties') as fp:
+    props = list(jprops.iter_properties(fp, comments=True))
+  for k, v in props:
+    if k is jprops.COMMENT:
+      print 'comment:', v
+
+``jprops`` doesn't include any special data structures for preserving comments,
+but you can manipulate the properties before writing them back out. For example
+this is one simple pattern for altering properties while writing the ouput::
+
+  updates = {'one': '1', 'two': '2', 'to_remove': None}
+
+  with open('out.properties', 'w') as fp:
+    for key, value in props:
+      # updates.pop will return and remove the value for the key, or return
+      # the original `value` if it doesn't exist
+      value = updates.pop(key, value)
+      # skip keys set to `None` in `updates`
+      if value is not None:
+        # write_property handles jprops.COMMENT as the key so you don't have to
+        # check whether to use write_comment
+        jprops.write_property(fp, key, value)
+    # since the existing keys have already been popped, use store_properties
+    # to write the remaining updates
+    jprops.store_properties(fp, updates, timestamp=False)
+
 File encodings and Unicode
 --------------------------
 

@@ -5,6 +5,7 @@ Changes
 ----------------
 
 * Support files opened with text encodings
+* Nice repr for ``jprops.COMMENT``
 
 1.0 (2013-06-12)
 ----------------
