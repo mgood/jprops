@@ -16,7 +16,19 @@ else:
   unichr = unichr
 
 
-COMMENT = object()
+class _CommentSentinel(object):
+  __slots__ = ()
+  def __repr__(self):
+    return 'jprops.COMMENT'
+  def __copy__(self):
+    return self
+  def __deepcopy__(self, memo):
+    return self
+  def __reduce__(self):
+    return 'COMMENT'
+
+
+COMMENT = _CommentSentinel()
 
 
 def load_properties(fh, mapping=dict):

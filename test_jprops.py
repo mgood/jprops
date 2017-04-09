@@ -1,5 +1,7 @@
 import codecs
+import copy
 import io
+import pickle
 from io import BytesIO, StringIO, TextIOBase
 
 import pytest
@@ -333,3 +335,9 @@ def test_file_modes(tmpdir, opener, encoding, file_data, mode, newline):
       jprops.store_properties(fp, expected_props, timestamp=False)
     actual_data = write_path.read_binary()
     assert actual_data == file_data
+
+
+def test_comment_identity():
+  assert copy.copy(jprops.COMMENT) is jprops.COMMENT
+  assert copy.deepcopy(jprops.COMMENT) is jprops.COMMENT
+  assert pickle.loads(pickle.dumps(jprops.COMMENT)) is jprops.COMMENT
