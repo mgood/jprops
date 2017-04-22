@@ -16,7 +16,7 @@ except:
 
 setuptools.setup(
   name = 'jprops',
-  version = '2.0',
+  version = '2.0.2',
   license = 'BSD',
   description = 'Parser for Java .properties files',
   long_description=README + '\n\n' + CHANGES,

@@ -1,8 +1,13 @@
 Changes
 =======
 
-2.0.1 (2017-04-21)
-----------------
+2.0.2 (2017-04-21)
+------------------
+
+* Bump version in setup.py before release
+
+2.0.1 (unreleased)
+------------------
 
 * Fix over-escaping in values
 
