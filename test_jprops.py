@@ -137,6 +137,9 @@ def test_escape(value, expected):
   # leading whitespace in value
   (u'  x\ty ', u'\\ \\ x\\ty '),
 
+  # space in middle value does not need escaped
+  (u'x y', u'x y'),
+
   # key terminator in value
   (u'=', u'\\='),
   (u':', u'\\:'),

@@ -224,7 +224,7 @@ store_tests = [
   {'a': u'\uffff'},
 
   # Escape value leading whitespace
-  {'a': '  x\ty '},
+  {'a': '  x \t y '},
 
   # Escape key terminators
   {'=': ''},

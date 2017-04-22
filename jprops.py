@@ -328,7 +328,7 @@ class _TextPropertyWriter(object):
     value = _require_string(value, 'values')
 
     key = self._escape_key(key)
-    value = self._escape_key(value)
+    value = self._escape_value(value)
 
     self._write(key)
     self._write(u'=')
